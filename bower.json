@@ -1,0 +1,24 @@
+{
+  "name": "chat-client",
+  "authors": [
+    "Roman Khabibullin <RKhabibullin@shoppinglive.ru>"
+  ],
+  "description": "CRM chat client",
+  "main": "www/index.html",
+  "license": "MIT",
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular-route": "^1.5.9",
+    "angular-strap": "^2.3.10",
+    "bootstrap": "^3.3.7",
+    "angular-sanitize": "^1.5.9"
+  }
+}

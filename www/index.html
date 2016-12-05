@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat test app</title>
+
+    <link rel="stylesheet" href="lib/bs/css/bootstrap.min.css">
+    <link rel="stylesheet" href="lib/bs/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="lib/fa/css/font-awesome.min.css">
+    <link rel="stylesheet" href="lib/custom-style.css">
+    <script src="lib/angular.min.js"></script>
+    <script src="lib/angular-strap.min.js"></script>
+    <script src="lib/angular-strap.tpl.min.js"></script>
+    <script src="lib/angular-sanitize.min.js"></script>
+    <script src="js/app.js"></script>
+</head>
+<body>
+<h1>Test</h1>
+
+    <div style="position: fixed;bottom: 0;right:0;width:200px;" ng-app="chatApp" ng-controller="chatCtrl">
+        <div class="panel panel-warning panel-condensed">
+            <div ng-show="!chatRdy" class="panel-heading">
+                <i class="fa fa-spinner fa-spin"></i> Loading chat
+            </div>
+            <div class="panel-heading text-center text-sl"  ng-show="chatRdy">
+               Online-Чат ({{user.role}})
+            </div>
+            <div class="panel-body"  ng-show="chatRdy && chatOpen">
+
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

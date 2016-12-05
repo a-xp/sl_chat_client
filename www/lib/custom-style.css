@@ -1,0 +1,22 @@
+.panel-sl{
+    border-color: #EA5901;
+}
+.panel-sl>.panel-heading {
+    background-image: -webkit-linear-gradient(top,#EA5901 0,#cb4e01 100%);
+    background-image: -o-linear-gradient(top,#EA5901 0,#cb4e01 100%);
+    background-image: -webkit-gradient(linear,left top,left bottom,from(#EA5901),to(#cb4e01));
+    background-image: linear-gradient(to bottom,#EA5901 0,#cb4e01 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffEA5901', endColorstr='#ffcb4e01', GradientType=0);
+    background-repeat: repeat-x;
+}
+.panel-sl > .panel-heading {
+    color: #fff;
+    background-color: #EA5901;
+    border-color: #EA5901;
+}
+.panel-condensed .panel-heading{
+    padding: 3px 15px;
+}
+.text-sl{
+    color: #EA5901;
+}
