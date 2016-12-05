@@ -20,12 +20,22 @@ module.exports = function(grunt) {
                     'bs/fonts':'bootstrap/dist/fonts/*',
                     'fa/css/font-awesome.min.css':'font-awesome/css/font-awesome.min.css',
                     'fa/fonts':'font-awesome/fonts/*',
-                    'angular-sanitize.min.js':'angular-sanitize/angular-sanitize.min.js'
+                    'angular-sanitize.min.js':'angular-sanitize/angular-sanitize.min.js',
+                    'angular-websocket.min.js':'angular-websocket/dist/angular-websocket.min.js'
+                }
+            }
+        },
+        reload: {
+            homepage: {
+                options: {
+                    url: 'http://localhost:9070/',
+                    match: 'Chat test app'
                 }
             }
         }
     });
 
     grunt.loadNpmTasks('grunt-bowercopy');
+    grunt.loadNpmTasks('grunt-reload-chrome');
 
 };

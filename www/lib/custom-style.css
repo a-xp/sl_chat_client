@@ -15,8 +15,75 @@
     border-color: #EA5901;
 }
 .panel-condensed .panel-heading{
-    padding: 3px 15px;
+    padding: 3px 5px;
+}
+.panel-condensed .panel-body{
+    padding: 3px 7px;
 }
 .text-sl{
     color: #EA5901;
 }
+@keyframes blink-yellow {
+    0% { color: yellow; }
+    100% { color: brown; }
+}
+@-webkit-keyframes  blink-yellow {
+    0% { color: yellow; }
+    100% { color: brown; }
+}
+.blink-yellow {
+    -webkit-animation:  blink-yellow 0.5s alternate infinite;
+    -moz-animation:  blink-yellow 0.5s alternate infinite;
+    animation:  blink-yellow 0.5s alternate infinite;
+    font-weight: bolder;
+}
+
+@keyframes blink-green {
+    0% { color: green; }
+    100% { color: white; }
+}
+@-webkit-keyframes  blink-green {
+    0% { color: green; }
+    100% { color: white; }
+}
+.blink-green {
+    -webkit-animation:  blink-green 0.5s alternate infinite;
+    -moz-animation:  blink-green 0.5s alternate infinite;
+    animation:  blink-green 0.5s alternate infinite;
+}
+
+
+.nav-condensed.nav>li>a{
+    padding: 5px 7px;
+}
+
+.list-group.list-group-condensed .list-group-item{
+    padding: 3px 5px;
+}
+
+.cc-chat-container .replica{
+    display: block;
+    padding: 5px;
+    background-color: #f0f0f0;
+    border: solid 1px #e0e0e0;
+    float: left;
+    clear: both;
+    margin: 0 0 3px 0;
+    max-width: 80%;
+    border-radius: 3px;
+    white-space: pre-wrap;
+}
+
+.cc-chat-container .my-replica{
+    float:right;
+    display: block;
+    padding: 5px;
+    background-color: #fcf8e3;
+    border: solid 1px #e0e0e0;
+    clear: both;
+    margin: 0 0 3px 0;
+    max-width: 80%;
+    border-radius: 3px;
+    white-space: pre-wrap;
+}
+

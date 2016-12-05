@@ -12,24 +12,62 @@
     <script src="lib/angular-strap.min.js"></script>
     <script src="lib/angular-strap.tpl.min.js"></script>
     <script src="lib/angular-sanitize.min.js"></script>
+    <script src="lib/angular-websocket.min.js"></script>
+    <script src="js/ajaxToken.js"></script>
     <script src="js/app.js"></script>
 </head>
 <body>
 <h1>Test</h1>
 
-    <div style="position: fixed;bottom: 0;right:0;width:200px;" ng-app="chatApp" ng-controller="chatCtrl">
+    <div style="position: fixed;bottom: 50%;right:50%;width:290px;" ng-app="chatApp" ng-controller="chatCtrl" class="cc-chat-container" ng-cloak>
         <div class="panel panel-warning panel-condensed">
-            <div ng-show="!chatRdy" class="panel-heading">
-                <i class="fa fa-spinner fa-spin"></i> Loading chat
+            <div ng-show="!chat.rdy" class="panel-heading">
+                <i class="fa fa-spinner fa-spin"></i> Загрузка
             </div>
-            <div class="panel-heading text-center text-sl"  ng-show="chatRdy">
-               Online-Чат ({{user.role}})
+            <div class="panel-heading text-center text-sl" ng-class="(!chat.open && chat.newMsg.length)?'blink-yellow':''" ng-show="chat.rdy">
+               Online-Чат ({{user.roleName}}) <a class="pull-right fa text-warning" ng-class="chat.open?'fa-window-minimize':'fa-window-maximize'"
+                                             ng-click="chat.open=!chat.open" style="text-decoration:none;" href="javascript:void(0)"></a>
             </div>
-            <div class="panel-body"  ng-show="chatRdy && chatOpen">
-
+            <div class="panel-body text-danger" ng-if="chat.rdy && !chat.open && chat.newMsg.length"
+                 ng-bind="chat.newMsg.length==1?'Получено новое сообщение '+chat.newMsg[0].login:'Получены новые сообщения'">
+            </div>
+            <div class="panel-body"  ng-if="chat.rdy && chat.open">
+                <ul class="nav nav-tabs nav-condensed" style="margin-bottom: 3px">
+                    <li role="presentation" ng-class="chat.contactTab=='last'?'active':''"><a href="javascript:void(0)" ng-click="chat.contactTab='last'">Последние</a></li>
+                    <li role="presentation" ng-class="chat.contactTab=='all'?'active':''"><a href="javascript:void(0)" ng-click="chat.contactTab='all'">Все</a></li>
+                    <li role="presentation" ng-class="chat.contactTab=='group'?'active':''" ng-if="user.role=='admin'"><a href="javascript:void(0)" ng-click="chat.contactTab='group'">Группы</a></li>
+                </ul>
+                <ul class="list-group list-group-condensed" style="max-height: 150px;overflow: auto;margin:0">
+                    <li class="list-group-item" ng-repeat="i in contacts[chat.contactTab] track by i.id" ng-click="openDialog(i)">
+                        {{i.login}} <i ng-show="i.new" class="glyphicon glyphicon-envelope pull-right blink-green"></i>
+                    </li>
+                </ul>
+            </div>
+            <div class="panel-heading" ng-if="chat.rdy && chat.open && dialog">
+                Разговор с {{dialog.login}} ({{dialog.io}})
+            </div>
+            <div class="panel-body" style="max-height:150px;position: relative;overflow: auto" ng-if="chat.rdy && chat.open && dialog">
+                <p ng-repeat="i in dialog.history" ng-class="i.my?'my-replica':'replica'"><small>{{i.when | shortDate}}</small> {{i.text}}</p>
+            </div>
+            <div class="panel-body" ng-if="chat.rdy && chat.open && dialog">
+                <form novalidate>
+                    <input name="chat_input" type="text" ng-model="dialogText" style="width:100%;border:none; background-color: #F5F5F5;" maxlength="255">
+                </form>
+            </div>
+            <div class="panel-heading" ng-if="chat.rdy && chat.open && broadcast">
+                Рассылка группе {{broadcast.name}}
+            </div>
+            <div class="panel-body" ng-if="chat.rdy && chat.open && broadcast">
+                <form novalidate>
+                    <textarea name="broadcast_input" class="form-control" rows="10" ng-model="broadcastText"></textarea>
+                    <button type="button" class="btn btn-primary btn-sm">Отправить</button>
+                </form>
             </div>
         </div>
+
     </div>
+
+
 
 </body>
 </html>
