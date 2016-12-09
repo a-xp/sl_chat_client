@@ -32,10 +32,18 @@ module.exports = function(grunt) {
                     match: 'Chat test app'
                 }
             }
+        },
+        'http-server' :{
+            dev: {
+                root: 'www',
+                port: 9101,
+                openBrowser:true                
+            }
         }
     });
 
     grunt.loadNpmTasks('grunt-bowercopy');
     grunt.loadNpmTasks('grunt-reload-chrome');
+    grunt.loadNpmTasks('grunt-http-server');
 
 };

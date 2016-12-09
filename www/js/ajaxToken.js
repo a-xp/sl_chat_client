@@ -4,6 +4,6 @@
 var module = angular.module('ajaxToken', []);
 module.factory('token', function(){
    return function(){
-       return '111111';
+       return "654";
    }
 });
