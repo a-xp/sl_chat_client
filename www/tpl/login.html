@@ -1,0 +1,11 @@
+<div class="panel panel-sl" style="width:350px;margin:100px;">
+    <div class="panel-heading">
+        Авторизация
+    </div>
+    <div class="panel-body">
+        <form name="form" class="form-inline">
+            <button type="button" class="btn btn-default" ng-model="userId" bs-select bs-options="i.id as i.login for i in logins" placeholder="Выберите оператора"></button>
+            <button type="button" class="btn btn-sl" ng-click="login()">Вход</button>
+        </form>
+    </div>
+</div>

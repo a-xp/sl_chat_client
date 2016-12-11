@@ -1,10 +1,30 @@
 /**
  * Created by rkhabibullin on 05.12.2016.
  */
-var app = angular.module('chatApp', ['mgcrea.ngStrap', 'ngSanitize', 'ajaxToken', 'ngWebSocket']);
+var app = angular.module('chatApp', ['mgcrea.ngStrap', 'ngSanitize', 'ajaxToken', 'ngWebSocket', 'ngRoute']);
 app.constant('serviceUrl', 'ws://localhost:9100/chat');
+app.constant('adminApiUrl', 'http://127.0.0.1:9100/admin/');
+app.config(function($routeProvider) {
+    $routeProvider.when("/login", {
+        templateUrl: '/tpl/login.html',
+        controller: 'loginCtrl'
+    }).when("/chat", {
+        templateUrl: '/tpl/chat.html',
+        controller: 'chatCtrl'
+    }).when("/admin", {
+        templateUrl: '/tpl/admin.html',
+        controller: 'adminCtrl'
+    }).otherwise('/login');
+});
+app.run( function($rootScope, token, $location) {
+    $rootScope.$on( "$routeChangeStart", function(event, next, current) {
+        if (!token() && next.templateUrl != "/tpl/login.html" && next.templateUrl != "/tpl/admin.html") {
+            $location.path( "/login" );
+        }
+    });
+});
 app.factory('contactsService', function($websocket, serviceUrl, token, $q){
-    var stream = $websocket(serviceUrl);
+    var stream;
     function request(cmdType, data){
         service.processing++;
         var rd = angular.extend({}, data, {jsonClass:'ChatService$'+cmdType});
@@ -13,18 +33,30 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
         });
     }
     var service = {
-        connected: true,
+        connected: false,
         contacts: null,
         groups: null,
         dialog: null,
         user: null,
+        connect: function(){
+          if(stream){
+              stream.close();
+          }
+          stream = $websocket(serviceUrl);
+          setMsgCb();
+          service.token(token());
+        },
+        close: function(){
+            service.connected = false;
+            stream.close();
+        },
         token: function(token){
             return request('TokenCmd', {token:token})
         },
-        open: function(contact_id){
+        openDlg: function(contact_id){
             return request('OpenDlgCmd', {contact:contact_id})
         },
-        close: function(){
+        closeDlg: function(){
             service.dialog = null;
         },
         read: function(contact_id){
@@ -45,71 +77,64 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
         },
         processing:false
     };
-    service.token(token());
-    service.groups = [
-        {id:1, login:'Линия СКС'},
-        {id:2, login:'Супервайзеры'},
-        {id:3, login:'Операторы КЦ'}
-    ];
 
-    service.contacts = [
-        {id:1, login:'vbychkov', new:true, last:'2016-12-01 11:00:11'},
-        {id:2, login:'rydenko', new:false, last:'2016-12-01 10:00:11'},
-        {id:3, login:'sirenina', new:false, last:'2016-12-01 06:00:11'},
-        {id:4, login:'nikolashkina', new:false, last:'2016-11-11 11:00:11'},
-        {id:5, login:'mednikova', new:false, last:'2016-11-01 11:00:11'},
-        {id:7, login:'pavlikova', new:true, last:'2016-22-01 11:00:11'}
-    ];
-
-    service.user = {
-        roleName: 'Супервайзер',
-        role: 'admin'
-    };
-
-    stream.onMessage(function(msg){
-        console.log(msg);
-        var data = JSON.parse(msg.data);
-        switch(data.type){
-            case 'info':
-                service.user = data.user;
-                connected=true;
-                break;
-            case 'groups':
-                service.groups = data.groups; break;
-            case 'contacts':
-                service.contacts = data.contacts; break;
-            case 'dialog':
-                service.dialog = data.dialog;
-                break;
-            case 'contact':
-                var i = -1;
-                angular.forEach(service.contacts, function(v, k){
-                    if(v.id==data.id)i = k;
-                });
-                if(i>=0){
-                    service.contacts[k] = data.contact;
-                }else{
-                    service.contacts.push(data.contact);
-                }
-                if(dialog.id==data.id){service.read(data.id)}
-                break;
-            case 'msg':
-                if(service.dialog && data.contact_id==service.dialog.id){
-                    angular.extend(service.dialog.msg, data.msg);
-                }
-                break;
-        }
-    });
+    function setMsgCb() {
+        stream.onMessage(function (msg) {
+            console.log(msg);
+            var data = JSON.parse(msg.data);
+            switch (data.jsonClass) {
+                case 'ChatService$InfoResult':
+                    service.user = {role: data.role, roleName:data.roleName};
+                    service.connected = true;
+                    break;
+                case 'ChatService$GroupsResult':
+                    service.groups = data.groups;
+                    break;
+                case 'ChatService$ContactsResult':
+                    service.contacts = data.contacts;
+                    break;
+                case 'ChatService$dialog':
+                    service.dialog = data.dialog;
+                    break;
+                case 'ChatService$contact':
+                    var i = -1;
+                    angular.forEach(service.contacts, function (v, k) {
+                        if (v.id == data.id)i = k;
+                    });
+                    if (i >= 0) {
+                        service.contacts[k] = data.contact;
+                    } else {
+                        service.contacts.push(data.contact);
+                    }
+                    if (dialog.id == data.id) {
+                        service.read(data.id)
+                    }
+                    break;
+                case 'ChatService$msg':
+                    if (service.dialog && data.contact_id == service.dialog.id) {
+                        angular.extend(service.dialog.msg, data.msg);
+                    }
+                    break;
+            }
+        });
+    }
 
     return service;
 });
 
 app.controller('chatCtrl', function($scope, $filter, contactsService){
     function updateContacts(){
-        $scope.tabs.last = $filter('orderBy')($scope.cs.contacts, ['-new', '-when']).slice(0, 5);
-        $scope.tabs.all = $filter('orderBy')($scope.cs.contacts, 'login');
-        $scope.tabs.new = $filter('filter')($scope.cs.contacts, {new:true}, true);
+        if($scope.cs.contacts){
+            $scope.tabs.last = $filter('orderBy')($scope.cs.contacts, ['-hasNew', '-last']).slice(0, 5);
+            $scope.tabs.all = $filter('orderBy')($scope.cs.contacts, 'login');
+            $scope.tabs.new = $filter('filter')($scope.cs.contacts, {hasNew:true}, true);
+        }else{
+            $scope.tabs = {
+                last:[], all:[], new:[]
+            }
+        }
     }
+    contactsService.connect();
     $scope.cs = contactsService;
     $scope.chat ={
         open: false,
@@ -123,10 +148,10 @@ app.controller('chatCtrl', function($scope, $filter, contactsService){
         all: [],
         group: $scope.cs.groups
     };
-    if($scope.cs.contacts.length)updateContacts();
+    if($scope.cs.contacts && $scope.cs.contacts.length)updateContacts();
     $scope.openDialog = function(dialog){
         $scope.chat.broadcast = null;
-        $scope.cs.open(dialog.id);
+        $scope.cs.openDlg(dialog.id);
     };
     $scope.openGroup = function (group) {
         $scope.cs.close();
@@ -140,6 +165,23 @@ app.controller('chatCtrl', function($scope, $filter, contactsService){
         $scope.cs.broadcastMsg($scope.chat.broadcast.id, $scope.chat.broadcastText);
         $scope.chat.broadcastText ='';
     }
+});
+app.controller('loginCtrl', function($scope, $location, $rootScope, chatAdminService){
+
+    chatAdminService.getUsers().then(function(list){
+        angular.forEach(list, function(v){
+            $scope.logins.push({id:v.crmId, login:v.login});
+        })
+    });
+    $scope.logins = [];
+    $scope.userId = null;
+
+   $scope.login = function(){
+    if($scope.userId) {
+        $scope.$emit('set-token', $scope.userId);
+        $location.path("/chat");
+    }       
+   } 
 });
 app.filter('shortDate', function($filter){
    var filterDate = $filter('date');

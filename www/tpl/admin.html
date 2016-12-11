@@ -1,0 +1,28 @@
+<div class="panel panel-sl" style="width:450px;margin:100px">
+<div class="panel-heading">
+    Панель управления чатом
+</div>
+
+    <div class="panel-body">
+
+        <input type="text" ng-model="groupName">
+        <button type="button" class="btn btn-sl" ng-click="showResult(as.createGroup(groupName))">Создать группу</button> <br/>
+        <button type="button" class="btn btn-sl" ng-click="showResult(as.getGroups())">Показать группы</button> <br/>
+
+        User ID: <input type="text" ng-model="userID"><br/>
+        Login: <input type="text" ng-model="userLogin"><br>
+        NAME: <input type="text" ng-model="userName"><br>
+        LAST NAME: <input type="text" ng-model="userLastName"><br>
+        ROLE: <input type="text" ng-model="userRole">        <br>
+        <button type="button" class="btn btn-sl" ng-click="showResult(as.addUser(userID, userName, userLastName, userRole, userLogin))">Добавить пользователя</button> <br/>
+        <button type="button" class="btn btn-sl" ng-click="showResult(as.getUsers())">Список пользователей</button> <br/>
+
+        <button type="button" class="btn btn-sl" ng-click="addTestData()">Добавить тестовые данные</button>
+        <div style="white-space: pre-wrap" ng-bind="result | json">
+
+        </div>
+
+    </div>
+
+
+</div>
