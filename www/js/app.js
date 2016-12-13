@@ -53,8 +53,11 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
         token: function(token){
             return request('TokenCmd', {token:token})
         },
+        startDlg : function(toWhom){
+          return request('StartDlgCmd', {toWhom: [toWhom]});
+        },
         openDlg: function(contact_id){
-            return request('OpenDlgCmd', {contact:contact_id})
+            return request('OpenDlgCmd', {dlgId:contact_id});
         },
         closeDlg: function(){
             service.dialog = null;
@@ -151,7 +154,11 @@ app.controller('chatCtrl', function($scope, $filter, contactsService){
     if($scope.cs.contacts && $scope.cs.contacts.length)updateContacts();
     $scope.openDialog = function(dialog){
         $scope.chat.broadcast = null;
-        $scope.cs.openDlg(dialog.id);
+        if(dlg.id){
+            $scope.cs.openDlg(dialog.id);
+        }else{
+            $scope.cs.startDlg(dialog.toWhom);
+        }
     };
     $scope.openGroup = function (group) {
         $scope.cs.close();
