@@ -1,6 +1,6 @@
 
 <div ng-cloak style="width:350px;margin:100px">
-    <div class="panel panel-sl panel-condensed">
+    <div class="panel panel-sl panel-condensed cc-chat-container">
         <div ng-show="!cs.connected" class="panel-heading">
             <i class="fa fa-spinner fa-spin"></i> Загрузка
         </div>
@@ -17,10 +17,17 @@
                 <li role="presentation" ng-class="chat.contactTab=='all'?'active':''"><a href="javascript:void(0)" ng-click="chat.contactTab='all'">Все</a></li>
                 <li role="presentation" ng-class="chat.contactTab=='group'?'active':''" ng-if="cs.user.role=='admin'"><a href="javascript:void(0)" ng-click="chat.contactTab='group'">Группы</a></li>
             </ul>
-            <ul class="list-group list-group-condensed" style="max-height: 150px;overflow: auto;margin:0">
-                <li class="list-group-item" ng-repeat="i in tabs[chat.contactTab] track by i.id"
-                    ng-class="(chat.contactTab=='group'?(chat.broadcast.id==i.id):(cs.dialog.id==i.id))?'list-group-item-success':''"
-                    ng-click="chat.contactTab=='group'?openGroup(i):openDialog(i)">
+            <ul class="list-group list-group-condensed" style="max-height: 150px;overflow: auto;margin:0" ng-if="chat.contactTab!='group'">
+                <li class="list-group-item" ng-repeat="i in tabs[chat.contactTab] track by i.userId"
+                    ng-class="(cs.dialog && cs.dialog.userId==i.userId)?'list-group-item-success':''"
+                    ng-click="openDialog(i)">
+                    {{i.login}} <i ng-show="i.hasNew" class="glyphicon glyphicon-envelope pull-right blink-green"></i>
+                </li>
+            </ul>
+            <ul class="list-group list-group-condensed" style="max-height: 150px;overflow: auto;margin:0" ng-if="chat.contactTab=='group'">
+                <li class="list-group-item" ng-repeat="i in tabs.group track by i.id"
+                    ng-class="chat.broadcast.id==i.id?'list-group-item-success':''"
+                    ng-click="openGroup(i)">
                     {{i.login}} <i ng-show="i.new" class="glyphicon glyphicon-envelope pull-right blink-green"></i>
                 </li>
             </ul>
@@ -29,12 +36,12 @@
             Разговор с {{cs.dialog.login}} ({{cs.dialog.io}})
         </div>
         <div class="panel-body" style="max-height:150px;position: relative;overflow: auto" ng-if="cs.connected && chat.open && cs.dialog">
-            <p ng-repeat="i in cs.dialog.history" ng-class="i.my?'my-replica':'replica'"><small>{{i.when | shortDate}}</small> {{i.text}}</p>
+            <p ng-repeat="i in cs.dialog.history|orderBy:{time:1}" ng-class="i.from==cs.user.id?'my-replica':'replica'"><small>{{i.time | shortDate}}</small> {{i.text}}</p>
         </div>
         <div class="panel-body" ng-if="cs.connected && chat.open && cs.dialog">
             <form novalidate>
                 <input name="chat_input" type="text" ng-model="chat.dialogText" style="width:100%;border:none;
-                    background-color: #F5F5F5;" maxlength="255" autocomplete="off" ng-disabled="!chat.dialogText.length"
+                    background-color: #F5F5F5;" maxlength="255" autocomplete="off"
                        ng-keyup="$event.keyCode == 13?sendMsg():null">
             </form>
         </div>

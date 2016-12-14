@@ -27,11 +27,12 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
     var stream;
     function request(cmdType, data){
         service.processing++;
-        var rd = angular.extend({}, data, {jsonClass:'ChatService$'+cmdType});
+        var rd = angular.extend({}, data, {jsonClass:'Cmd$'+cmdType});
         return stream.send(rd).finally(function(){
             service.processing--;
         });
     }
+    var waitingCreation = null;
     var service = {
         connected: false,
         contacts: null,
@@ -54,20 +55,25 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
             return request('TokenCmd', {token:token})
         },
         startDlg : function(toWhom){
-          return request('StartDlgCmd', {toWhom: [toWhom]});
+          waitingCreation = toWhom;
+          return request('FindOrCreateDlgCmd', {withWhom: toWhom});
         },
         openDlg: function(contact_id){
-            return request('OpenDlgCmd', {dlgId:contact_id});
+            service.dialog = null;
+            angular.forEach(service.contacts, function(v){
+                if(v.dlgId==contact_id)service.dialog = v;
+                service.read(contact_id);
+            });
         },
         closeDlg: function(){
             service.dialog = null;
         },
         read: function(contact_id){
-            return request('ReadCmd', {contact:contact_id})
+            return request('ReadCmd', {dlgId:contact_id})
         },
         sendMsg: function(msg){
             if(service.dialog){
-                return request('MsgCmd', {contact:service.dialog.id, msg:msg})
+                return request('MsgCmd', {dlgId:service.dialog.dlgId, msg:msg})
             }else{
                 return $q.reject("Invalid state");
             }
@@ -78,46 +84,57 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
         typing: function(){
             return request('TypingCmd')
         },
-        processing:false
+        processing:false,
+        error: null
     };
 
     function setMsgCb() {
         stream.onMessage(function (msg) {
             console.log(msg);
             var data = JSON.parse(msg.data);
-            switch (data.jsonClass) {
-                case 'ChatService$InfoResult':
-                    service.user = {role: data.role, roleName:data.roleName};
+            var type = data.jsonClass.replace(/^Result\$/, '');
+            switch (type) {
+                case 'AuthSuccessResult':
+                    service.user = data;
                     service.connected = true;
                     break;
-                case 'ChatService$GroupsResult':
+                case 'AuthFailedResult':
+                    service.error = data.reason;
+                    break;
+                case 'GroupsResult':
                     service.groups = data.groups;
                     break;
-                case 'ChatService$ContactsResult':
+                case 'ContactsResult':
                     service.contacts = data.contacts;
                     break;
-                case 'ChatService$dialog':
-                    service.dialog = data.dialog;
-                    break;
-                case 'ChatService$contact':
-                    var i = -1;
+                case 'ContactUpdate':
+                    var contact = angular.extend(data.contact, {history:[]});
                     angular.forEach(service.contacts, function (v, k) {
-                        if (v.id == data.id)i = k;
+                        if (v.dlgId == contact.dlgId || (!v.dlgId && v.userId==contact.userId)){
+                            service.contacts[k] = contact;
+                        }
                     });
-                    if (i >= 0) {
-                        service.contacts[k] = data.contact;
-                    } else {
-                        service.contacts.push(data.contact);
+                    if(waitingCreation && waitingCreation==contact.userId){
+                        service.dialog = contact;
+                        waitingCreation = null;
                     }
-                    if (dialog.id == data.id) {
-                        service.read(data.id)
-                    }
-                    break;
-                case 'ChatService$msg':
-                    if (service.dialog && data.contact_id == service.dialog.id) {
-                        angular.extend(service.dialog.msg, data.msg);
+                    if(service.dialog && service.dialog.dlgId==contact.dlgId && contact.hasNew){
+                        service.read(contact.dlgId);
                     }
                     break;
+                case 'DialogMsgList':
+                    if(service.dialog && data.dlgId==service.dialog.dlgId) {
+                        service.dialog.history = data.msg;
+                    }
+                    break;
+                case 'DialogNewMsg':
+                    if(service.dialog && data.dlgId==service.dialog.dlgId){
+                        service.dialog.history = service.dialog.history.concat(data.msg);
+                    }
+                    break;
+                case 'TypingNotification':
+                    break;
+                default: console.log('unknown msg ', type)
             }
         });
     }
@@ -152,12 +169,12 @@ app.controller('chatCtrl', function($scope, $filter, contactsService){
         group: $scope.cs.groups
     };
     if($scope.cs.contacts && $scope.cs.contacts.length)updateContacts();
-    $scope.openDialog = function(dialog){
+    $scope.openDialog = function(dlg){
         $scope.chat.broadcast = null;
-        if(dlg.id){
-            $scope.cs.openDlg(dialog.id);
+        if(dlg.dlgId){
+            $scope.cs.openDlg(dlg.dlgId);
         }else{
-            $scope.cs.startDlg(dialog.toWhom);
+            $scope.cs.startDlg(dlg.userId);
         }
     };
     $scope.openGroup = function (group) {

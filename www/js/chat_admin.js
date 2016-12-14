@@ -16,7 +16,7 @@ app.factory('chatAdminService', function($http, adminApiUrl){
           })
       },
       addUser: function(id, name, lastName, role, login){
-          return $http.post(adminApiUrl+'user', {id:parseInt(id), name:name, lastName:lastName, role:parseInt(role), login:login}).then(function(result){
+          return $http.post(adminApiUrl+'user', {id:parseInt(id), name:name, lastName:lastName, role:role, login:login}).then(function(result){
               return result.data;
           })
       },
@@ -41,11 +41,11 @@ app.controller('adminCtrl', function($scope, chatAdminService){
     
     $scope.addTestData = function(){
         
-        var users =    [{id:2, login:'rydenko', name:'Ирина', lastName:'Рыденко', role:0},
-            {id:3, login:'sirenina', name:'Елена', lastName:'Сиренина', role:1},
-            {id:4, login:'nikolashkina', name:'Елена', lastName:'Николашкина', role:0},
-            {id:5, login:'mednikova', name:'Екатерина', lastName:'Медникова', role:0},
-            {id:6, login:'pavlikova',name:'Ольга', lastName:'Павликова', role:0}];
+        var users =    [{id:355258, login:'LRuzhenkoMSK', name:'Ирина', lastName:'Рыденко', role:"user"},
+            {id:355259, login:'NMelnikovaMSK', name:'Елена', lastName:'Сиренина', role:"admin"},
+            {id:356200, login:'LSosnenkoMSK', name:'Елена', lastName:'Николашкина', role:"user"},
+            {id:356201, login:'LKazantsevaMSK', name:'Екатерина', lastName:'Медникова', role:"user"},
+            {id:356624, login:'NSukhorukovKLF',name:'Ольга', lastName:'Павликова', role:"user"}];
 
         var groups = [{name: 'Операторы СКС'}, {name: 'Операторы КЦ'}];
 
