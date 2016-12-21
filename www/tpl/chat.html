@@ -4,12 +4,13 @@
         <div ng-show="!cs.connected" class="panel-heading">
             <i class="fa fa-spinner fa-spin"></i> Загрузка
         </div>
-        <div class="panel-heading text-center text-sl" ng-class="(!chat.open && chat.newMsg.length)?'blink-yellow':''" ng-show="cs.connected">
+        <div class="panel-heading text-center text-sl" ng-class="(!chat.open && tabs.new.length)?'blink-yellow':''" ng-show="cs.connected">
             Online-Чат ({{cs.user.roleName}}) <a class="pull-right fa" ng-class="chat.open?'fa-window-minimize':'fa-window-maximize'"
-                                                 ng-click="chat.open=!chat.open" style="text-decoration:none;color:#ffffff" href="javascript:void(0)"></a>
+                                                 ng-click="toggleWnd()" style="text-decoration:none;color:#ffffff" href="javascript:void(0)"></a>
         </div>
-        <div class="panel-body text-danger" ng-if="cs.connected && !chat.open && chat.new.length"
-             ng-bind="tabs.new.length==1?'Получено новое сообщение '+chat.new[0].login:'Получены новые сообщения'">
+        <div class="panel-body text-danger" ng-if="cs.connected && !chat.open && tabs.new.length">
+            <span ng-show="tabs.new.length==1" ng-click="openDialog(tabs.new[0])">Получено новое сообщение {{tabs.new[0].login}}</span>
+            <span ng-show="tabs.new.length>1">Получены новые сообщения</span>
         </div>
         <div class="panel-body"  ng-if="cs.connected && chat.open">
             <ul class="nav nav-tabs nav-condensed" style="margin-bottom: 3px">
@@ -35,8 +36,8 @@
         <div class="panel-heading" ng-if="cs.connected && chat.open && cs.dialog">
             Разговор с {{cs.dialog.login}} ({{cs.dialog.io}})
         </div>
-        <div class="panel-body" style="max-height:150px;position: relative;overflow: auto" ng-if="cs.connected && chat.open && cs.dialog">
-            <p ng-repeat="i in cs.dialog.history|orderBy:{time:1}" ng-class="i.from==cs.user.id?'my-replica':'replica'"><small>{{i.time | shortDate}}</small> {{i.text}}</p>
+        <div class="panel-body" style="max-height:150px;position: relative;overflow: auto" ng-if="cs.connected && chat.open && cs.dialog" id="dialog_messages">
+            <p ng-repeat="i in cs.dialog.history|orderBy:'time'" ng-class="i.from==cs.user.id?'my-replica':'replica'"><small>{{i.time | shortDate}}</small> {{i.text}}</p>
         </div>
         <div class="panel-body" ng-if="cs.connected && chat.open && cs.dialog">
             <form novalidate>

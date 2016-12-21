@@ -48,8 +48,8 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
           service.token(token());
         },
         close: function(){
-            service.connected = false;
             stream.close();
+            stream = null;
         },
         token: function(token){
             return request('TokenCmd', {token:token})
@@ -84,11 +84,20 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
         typing: function(){
             return request('TypingCmd')
         },
+        requestContacts: function(){
+            return request('GetContacts')
+        },
         processing:false,
         error: null
     };
 
     function setMsgCb() {
+        stream.onOpen(function(){
+            service.connected = true;
+        });
+        stream.onClose(function(){
+            service.connected = false;
+        });
         stream.onMessage(function (msg) {
             console.log(msg);
             var data = JSON.parse(msg.data);
@@ -97,6 +106,7 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
                 case 'AuthSuccessResult':
                     service.user = data;
                     service.connected = true;
+                    service.requestContacts();
                     break;
                 case 'AuthFailedResult':
                     service.error = data.reason;
@@ -142,7 +152,7 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
     return service;
 });
 
-app.controller('chatCtrl', function($scope, $filter, contactsService){
+app.controller('chatCtrl', function($scope, $filter, contactsService, $timeout){
     function updateContacts(){
         if($scope.cs.contacts){
             $scope.tabs.last = $filter('orderBy')($scope.cs.contacts, ['-hasNew', '-last']).slice(0, 5);
@@ -161,7 +171,16 @@ app.controller('chatCtrl', function($scope, $filter, contactsService){
         contactTab: 'last',
         broadcast:null
     };
+    $scope.$watch('cs.dialog.history.length', function(len){
+        if(len>0){ $timeout(function(){var e = document.getElementById('dialog_messages'); e.scrollTop = e.scrollHeight; }, 50);}
+    });
     $scope.$watchCollection('cs.contacts', updateContacts);
+    $scope.toggleWnd = function(){
+        $scope.chat.open = !$scope.chat.open;
+        if(!$scope.chat.open){
+            $scope.cs.closeDlg();
+        }
+    };
     $scope.tabs = {
         new: [],
         last: [],
@@ -170,6 +189,7 @@ app.controller('chatCtrl', function($scope, $filter, contactsService){
     };
     if($scope.cs.contacts && $scope.cs.contacts.length)updateContacts();
     $scope.openDialog = function(dlg){
+        $scope.chat.open = true;
         $scope.chat.broadcast = null;
         if(dlg.dlgId){
             $scope.cs.openDlg(dlg.dlgId);
