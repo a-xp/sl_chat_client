@@ -24,7 +24,12 @@ app.factory('chatAdminService', function($http, adminApiUrl){
         return $http.get(adminApiUrl+'user').then(function(result){
             return result.data;
         })    
-       } 
+       },
+         reset: function () {
+             return $http.post(adminApiUrl+'reset').then(function(result){
+                 return true;
+             })    
+         }
     };
     return service;
 });
