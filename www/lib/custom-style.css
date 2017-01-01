@@ -86,6 +86,15 @@
     border-radius: 3px;
     white-space: pre-wrap;
 }
+.cc-chat-container .typing-notification{
+    font-size: 80%;
+    display: block;
+    padding: 3px;
+    float: left;
+    clear: both;
+    margin: 0;
+    font-style: italic;
+}
 
 .btn-sl {
     color: #fff;

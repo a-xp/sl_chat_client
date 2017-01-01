@@ -23,7 +23,7 @@ app.run( function($rootScope, token, $location) {
         }
     });
 });
-app.factory('contactsService', function($websocket, serviceUrl, token, $q){
+app.factory('contactsService', function($websocket, serviceUrl, token, $q, $timeout){
     var stream;
     function request(cmdType, data){
         service.processing++;
@@ -32,8 +32,10 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
             service.processing--;
         });
     }
+    var connDefer = null;
     var waitingCreation = null;
     var service = {
+        sentMsg: [],
         connected: false,
         contacts: null,
         groups: null,
@@ -46,6 +48,8 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
           stream = $websocket(serviceUrl);
           setMsgCb();
           service.token(token());
+          connDefer = $q.defer();
+          return connDefer.promise;
         },
         close: function(){
             stream.close();
@@ -61,7 +65,7 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
         openDlg: function(contact_id){
             service.dialog = null;
             angular.forEach(service.contacts, function(v){
-                if(v.dlgId==contact_id)service.dialog = v;
+                if(v.dlgId==contact_id)service.dialog = angular.extend({history:[]}, v);
                 service.read(contact_id);
             });
         },
@@ -71,8 +75,12 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
         read: function(contact_id){
             return request('ReadCmd', {dlgId:contact_id})
         },
+        readNew: function(contact_id){
+          return request('ReadNewCmd', {dlgId:contact_id})
+        },
         sendMsg: function(msg){
             if(service.dialog){
+                service.sentMsg.push({text:msg, dlgId:service.dialog.dlgId});
                 return request('MsgCmd', {dlgId:service.dialog.dlgId, msg:msg})
             }else{
                 return $q.reject("Invalid state");
@@ -82,7 +90,14 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
             return request('BroadcastCmd', {group:groupId, msg:msg})
         },
         typing: function(){
-            return request('TypingCmd')
+            if(service.dialog){
+                return request('TypingCmd', {dlgId:service.dialog.dlgId})
+            }else{
+                return $q.reject("Invalid state");
+            }
+        },
+        requestGroups: function(){
+          return request('GetGroups')
         },
         requestContacts: function(){
             return request('GetContacts')
@@ -96,7 +111,14 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
             service.connected = true;
         });
         stream.onClose(function(){
+            if(!connDefer.promise.$$state.status){
+                connDefer.reject(true);
+            }
             service.connected = false;
+            service.dialog=null;
+            service.contacts=null;
+            service.groups=null;
+            service.sentMsg = [];
         });
         stream.onMessage(function (msg) {
             console.log(msg);
@@ -106,10 +128,16 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
                 case 'AuthSuccessResult':
                     service.user = data;
                     service.connected = true;
+                    connDefer.resolve(true);
                     service.requestContacts();
+                    if(service.user.role=='admin'){
+                        service.requestGroups();
+                    }
                     break;
                 case 'AuthFailedResult':
                     service.error = data.reason;
+                    service.close();
+                    connDefer.reject(true);
                     break;
                 case 'GroupsResult':
                     service.groups = data.groups;
@@ -117,42 +145,93 @@ app.factory('contactsService', function($websocket, serviceUrl, token, $q){
                 case 'ContactsResult':
                     service.contacts = data.contacts;
                     break;
-                case 'ContactUpdate':
-                    var contact = angular.extend(data.contact, {history:[]});
-                    angular.forEach(service.contacts, function (v, k) {
-                        if (v.dlgId == contact.dlgId || (!v.dlgId && v.userId==contact.userId)){
-                            service.contacts[k] = contact;
+                case 'DialogMsgAccepted':
+                    angular.forEach(service.sentMsg, function(v,k){
+                        if(v.dlgId==data.dlgId && javaHashCode(v.text)==data.hash){
+                            delete service.sentMsg[k];
+                            angular.forEach(service.contacts, function(v,k){
+                                if(v.dlgId==v.dlgId)service.contacts[k].last = data.time;
+                            });
+                            if(service.dialog.dlgId==v.dlgId){
+                                service.dialog.history.push({text:v.text, time:data.time, from:service.user.id});
+                            }
                         }
                     });
-                    if(waitingCreation && waitingCreation==contact.userId){
-                        service.dialog = contact;
-                        waitingCreation = null;
+                    break;
+                case 'DialogIdResult':
+                    var toUser = data.withWhom;
+                    var dlgId = data.dlgId;
+                    var found = -1;
+                    angular.forEach(service.contacts, function (v, k) {
+                        if (!v.dlgId && v.userId==toUser){
+                            service.contacts[k].dlgId = dlgId;
+                            found = k
+                        }
+                    });
+                    if(found>=0) {
+                        if (waitingCreation && waitingCreation == toUser) {
+                            service.dialog = angular.extend({history:[]}, service.contacts[found]);
+                            waitingCreation = null;
+                        }
                     }
-                    if(service.dialog && service.dialog.dlgId==contact.dlgId && contact.hasNew){
-                        service.read(contact.dlgId);
+                    break;
+                case 'DialogNewMsg':
+                    if(service.dialog && data.dlgId==service.dialog.dlgId) {
+                        service.dialog.history = service.dialog.history.concat(data.msg);
+                        service.dialog.typing =false;
                     }
                     break;
                 case 'DialogMsgList':
                     if(service.dialog && data.dlgId==service.dialog.dlgId) {
                         service.dialog.history = data.msg;
+                        service.dialog.typing =false;
                     }
                     break;
-                case 'DialogNewMsg':
-                    if(service.dialog && data.dlgId==service.dialog.dlgId){
-                        service.dialog.history = service.dialog.history.concat(data.msg);
+                case 'ContactUpdate':
+                    var k = contactByDlgId(data.contact.dlgId);
+                    if(k>=0){
+                        angular.extend(service.contacts[k], data.contact);
+                        if(service.dialog && service.dialog.dlgId==data.contact.dlgId && data.contact.hasNew){
+                            service.readNew(data.contact.dlgId);
+                        }
                     }
                     break;
                 case 'TypingNotification':
+                    if(service.dialog && data.dlgId==service.dialog.dlgId){
+                        service.dialog.typing=true;
+                        $timeout(function(){
+                            if(service.dialog && data.dlgId==service.dialog.dlgId){
+                                service.dialog.typing=false;
+                            }
+                        }, 5000);
+                    }
                     break;
                 default: console.log('unknown msg ', type)
             }
         });
     }
+    function javaHashCode(str){
+        var hash = 0;
+        if (str.length == 0) return hash;
+        for (i = 0; i < str.length; i++) {
+            char = str.charCodeAt(i);
+            hash = ((hash<<5)-hash)+char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return hash;
+    }
+    function contactByDlgId(id){
+        var found = -1;
+        angular.forEach(service.contacts, function (v, k) {
+            if(v.dlgId==id)found=k;
+        });
+        return found;
+    }
 
     return service;
 });
 
-app.controller('chatCtrl', function($scope, $filter, contactsService, $timeout){
+app.controller('chatCtrl', function($scope, $filter, contactsService, $timeout, $interval){
     function updateContacts(){
         if($scope.cs.contacts){
             $scope.tabs.last = $filter('orderBy')($scope.cs.contacts, ['-hasNew', '-last']).slice(0, 5);
@@ -172,9 +251,31 @@ app.controller('chatCtrl', function($scope, $filter, contactsService, $timeout){
         broadcast:null
     };
     $scope.$watch('cs.dialog.history.length', function(len){
-        if(len>0){ $timeout(function(){var e = document.getElementById('dialog_messages'); e.scrollTop = e.scrollHeight; }, 50);}
+        if(len>0){ $timeout(scrollDialog, 50);}
     });
+    $scope.$watch('cs.dialog.typing', function(flag){
+        if(flag>0){ $timeout(scrollDialog, 50);}
+    });
+    function scrollDialog(){
+        var e = document.getElementById('dialog_messages'); e.scrollTop = e.scrollHeight;
+    }
     $scope.$watchCollection('cs.contacts', updateContacts);
+    var reconPromise=null;
+    $scope.$watch('cs.connected', function(connected){
+        if(!connected){
+            if(reconPromise)reconPromise.cancel();
+            reconPromise = $timeout(function(){
+                if(!$scope.cs.connected){
+                    $scope.cs.connect()
+                }
+            },10000);
+        }
+    });
+    $scope.$on("$destroy", function() {
+        if(reconPromise){
+            reconPromise.cancel(); reconPromise=null
+        }
+    });
     $scope.toggleWnd = function(){
         $scope.chat.open = !$scope.chat.open;
         if(!$scope.chat.open){
@@ -208,7 +309,14 @@ app.controller('chatCtrl', function($scope, $filter, contactsService, $timeout){
     $scope.broadcast = function(){
         $scope.cs.broadcastMsg($scope.chat.broadcast.id, $scope.chat.broadcastText);
         $scope.chat.broadcastText ='';
-    }
+    };
+    var lastTyping = 0;
+    $scope.typing = function () {
+        if(lastTyping+5000<Date.now()){
+            lastTyping=Date.now();
+            $scope.cs.typing()
+        }
+    };
 });
 app.controller('loginCtrl', function($scope, $location, $rootScope, chatAdminService){
 

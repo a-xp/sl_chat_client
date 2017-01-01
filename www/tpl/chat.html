@@ -34,16 +34,17 @@
             </ul>
         </div>
         <div class="panel-heading" ng-if="cs.connected && chat.open && cs.dialog">
-            Разговор с {{cs.dialog.login}} ({{cs.dialog.io}})
+            Разговор с {{cs.dialog.login}} ({{cs.dialog.userName}})
         </div>
         <div class="panel-body" style="max-height:150px;position: relative;overflow: auto" ng-if="cs.connected && chat.open && cs.dialog" id="dialog_messages">
             <p ng-repeat="i in cs.dialog.history|orderBy:'time'" ng-class="i.from==cs.user.id?'my-replica':'replica'"><small>{{i.time | shortDate}}</small> {{i.text}}</p>
+            <p class="typing-notification" ng-if="cs.dialog.typing"><i class="glyphicon glyphicon-pencil"></i> {{cs.dialog.userName}} печатает...</p>
         </div>
         <div class="panel-body" ng-if="cs.connected && chat.open && cs.dialog">
             <form novalidate>
                 <input name="chat_input" type="text" ng-model="chat.dialogText" style="width:100%;border:none;
                     background-color: #F5F5F5;" maxlength="255" autocomplete="off"
-                       ng-keyup="$event.keyCode == 13?sendMsg():null">
+                       ng-keyup="$event.keyCode == 13?sendMsg():typing()">
             </form>
         </div>
         <div class="panel-heading" ng-if="cs.connected && chat.open && chat.broadcast">
